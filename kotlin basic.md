@@ -2256,3 +2256,283 @@ fun main() {
     val stu2 = Student("小红", 18)
 }
 ```
+
+## 委托模式
+
+```kt
+interface Base {
+    fun print()
+}
+
+class BaseImpl: Base {
+    override fun print() = println("Hello world!")
+}
+
+class Derived(var b: Base): Base {
+    override fun print() = b.print()
+}
+
+fun main() {
+    val base: Base = Derived(BaseImpl())
+    base.print()
+}
+```
+
+使用 `by` 实现委托：
+
+```kt
+// Derived 类要实现 Base 接口，但具体的活儿需要交给 b 去做
+class Derived(var b: Base): Base by b
+```
+
+类的成员属性也可以委托给给其他对象。
+
+`lazy`：第一次获取属性值的时候就会执行 `lazy` 里面的操作：
+
+```kt
+class Example {
+    val p: String by lazy { "牛逼" }
+}
+
+fun main() {
+    println(Example().p)
+}
+```
+
+也可以设置观察者，观察变量变化：
+
+```kt
+class Example {
+    var p: String by Delegates.observable("我是初始值") {
+        prop, old, new -> 
+        println("检测到$prop的值发生变化：$old -> $new")
+    }
+}
+
+fun main() {
+    Example().p = "你干嘛"
+}
+```
+
+属性也可以委托给其他属性：
+
+```kt
+class Example(var a: String) {
+    var p: String by ::a
+}
+
+// 等价于：
+class Example(var a: String) {
+    // 把 p 的访问器直接指向了 a
+    var p: String
+        get() = this.a
+        set(value) = { this.a = value }
+}
+
+fun main() {
+    val example = Example("AAA")
+    example.p = "BBB"
+    println(example.a) // 输出 AAA
+}
+```
+
+将属性委托给 Map：
+
+```kt
+class User(map: MutableMap<String, Any>) {
+    var name: String by map
+    var age: Int by map
+    override fun toString(): String = "名字：$name，年龄：$age")
+}
+
+fun main() {
+    // 模拟从 JSON 解析出来的 Map
+    val dataFromServer = mutableMapOf<String, Any>(
+        "name" to "小明",
+        "age" to 25
+    )
+
+    val user = User(dataFromServer)
+
+    println(user.name) // 输出 阿强
+    
+    user.age = 26      // 自动更新了底层的 Map
+    println(dataFromServer["age"]) // 输出 26
+}
+```
+
+## 密封类型
+
+密封类所有直接子类编译时已知：
+
+```kt
+// Test.kt
+package com.test
+
+sealed class A
+sealed class B: A() // 同一个模块或包内可以随意继承
+class C: A() // 子类密封或者不密封都可以
+
+// Main.kt
+impoer com.test.A
+
+class C: A() // 编译失败，不可外部继承
+
+fun main() {
+    val b = B() // 编译失败，不可实例化
+}
+```
+
+密封类的 `when` 类型判断不需要 `else`：
+
+```kt
+sealed class Result
+data class Success(val data: String) : Result()
+data class Error(val exception: Exception) : Result()
+object Loading : Result()
+
+fun handleResult(result: Result) = when(result) {
+    is Success -> "Got data: ${result.data}"
+    is Error -> "Error occurred"
+    is Loading -> "Loading..."
+    // 不需要 else，因为编译器知道 Result 只有这三种可能
+}
+```
+
+## 异常机制
+
+```kt
+fun main() {
+    test(1, 0)
+    println("???") // 无法被执行
+}
+
+private fun test(a: Int, b: Int): Int {
+    return a / b // 程序崩溃
+}
+```
+
+报错：
+
+```text
+// StackTrace，标记了报错文件与行数，便于定位问题位置
+Exception in thread "main" java.lang.ArithmeticException: / by zero
+    at MainKt.test(Example.kt:6) 
+    at MainKt.main(Example.kt:2)
+    at MainKt.main(Main.kt)
+```
+
+- `Thorowable` (根类)
+  - `Error` (致命错误)
+  - `Exception` (程序异常)
+    - `RuntimeException` (运行时异常)
+    - 受检异常
+  
+`thorow` 抛出异常：
+
+```kt
+fun main() {
+    test(1, 0)
+    println("???")
+}
+
+// 自定义异常
+class TestException(var message: String): Exception(message)
+
+private fun test(a: Int, b: Int): Int {
+    if(b == 0) throw TestException("0 不可作除数")
+    return a / b // 程序崩溃
+}
+```
+
+报错：
+
+```text
+Exception in thread "main" TestException: 0 不可作除数
+    at MainKt.test(Example.kt:6) 
+    at MainKt.main(Example.kt:2)
+    at MainKt.main(Main.kt)
+```
+
+### 异常的捕获
+
+```kt
+fun main() {
+    Array(Int.MAX_VALUE) { 0 }
+}
+```
+
+报错 (这是一个 `Error`)：
+
+```text
+Exception in thread "main" java.lang.OutOfMemoryError: Requested array size exceeds VM limit
+    at ...
+```
+
+程序一定会崩溃。
+
+可以用 `try-catch` 在抛出异常时捕获并处理，使程序不崩溃：
+
+```kt
+fun main() {
+    val array = arrayOf(1, 2, 3)
+    try {
+        println(array[3])
+    } catch (e: ArrayIndexOutOfBoundsException) {
+        e.printStackTrace()
+    }
+    println("程序正常执行")
+}
+```
+
+有多种类型的异常时：
+
+```kt
+try {
+    ...
+} catch(e: ArrayIndexOutOfBoundsException) {
+    ...
+} catch(e: NullPointerException) {
+    ...
+}
+```
+
+`finally` 无论是否出现异常最后都会执行：
+
+```kt
+fun readFile() {
+    val file = openFile("data.txt") // 开启资源
+    try {
+        val content = file.read()    // 如果这里报错了！
+        println(content)
+    } catch (e: Exception) {
+        println("出错啦")
+    }
+    file.close() // 这里的关闭代码可能永远不会执行
+}
+```
+
+```kt
+fun readFile() {
+    val file = openFile("data.txt")
+    try {
+        val cont ent = file.read()
+        return // 即使这里直接返回了！
+    } catch (e: Exception) {
+        println("出错啦")
+    } finally {
+        file.close() // 这段代码一定会被执行
+        println("资源已安全释放")
+    }
+}
+```
+
+## 数组
+
+```kt
+fun main() {
+    val array: Array<Int> = arrayOf(1, 1, 4, 5, 1, 4) // 可变参数
+}
+```
+
+数组创建后无法进行修改长度和元素类型。
