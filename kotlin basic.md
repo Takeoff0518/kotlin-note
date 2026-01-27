@@ -2536,3 +2536,265 @@ fun main() {
 ```
 
 数组创建后无法进行修改长度和元素类型。
+
+使用 `[]` 访问元素 (从 0 开始)：
+
+数组不可以用 `==` 判断是否相同 (没有重写过 `equals()`)。
+
+需要使用 `contentEquals()` ：
+
+```kt
+fun main() {
+    val arr1: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    val arr2: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    println(arr1.contentEquals(arr2)) // 输出 true
+}
+```
+
+使用 `copyOf()` 复制数组：
+
+```kt
+fun main() {
+    val arr1: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    val arr2: Array<Int?> = arr1.copyOf(10) // 新数组长度
+    println(arr2.joinToString()) // 1, 2, 3, 4, 5, null, null, null, null, null 
+}
+```
+
+可以指定范围：
+
+```kt
+fun main() {
+    val arr1: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    val arr2: Array<Int> = arr1.copyOf(1, 3) // 不包含右界 [2, 3)
+    println(arr2.joinToString()) // 2, 3
+}
+```
+
+`.silceArray()` 也可用于拷贝：
+
+```kt
+****fun main() {
+    val arr1: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    val arr2: Array<Int> = arr1.copyOf(1..3) // 不包含右界 [2, 4]
+    println(arr2.joinToString()) // 2, 3, 4
+}
+```
+
+可以用 `+` 拼接：
+
+```kt
+fun main() {
+    val arr1: Array<Int> = arrayOf(1, 2, 3, 4, 5)
+    val arr2: Array<Int> = arrayOf(6, 7, 8, 9, 10)
+    arr3 = arr1 + arr2
+
+    println(arr3.joinToString()) // 输出 1 到 10
+}
+```
+
+可以用 `in` 判断元素是否在数组内。
+
+`indexOf()` 查找元素位置，`binarySearch()` 用二分查找查找 (需要保证有序)。
+
+```kt
+class Student(val name: String, val age: Int)
+
+fun main() {
+    val arr = arrayOf(Student("小明", 18), Student("小红", 17))
+    println(Student("小明", 18) in arr) // 输出 false，Any 的 equals() 默认只比较引用地址
+    // 建议重写 equals() 或者使用 data class
+}
+```
+
+`.any()` 判断是否为空数组。
+
+`first()`、`last()` 获取首尾元素。
+
+`reversedArray()` 翻转数组并生成新数组，`reverse()` 只翻转当前数组。
+
+`shuffle()` 打乱数组。
+
+`sort()` 排序数组 (需要自行实现比较)：
+
+```kt
+class Student(val name: String, val age: Int): Comparable<Student> {
+    override fun toString(other: Student): Int = this.age - other.age
+}
+```
+
+`.fill()` 把数组全部填充为一个值。
+
+## 可变长参数
+
+用 `vararg` 标记：
+
+```kt
+fun main() {
+    test("1", "qwq", ...)
+}
+
+fun test(vararg str: String) {
+    
+}
+```
+
+可以混写：
+
+```kt
+fun test(vararg str: String, a: Int) // 可以
+fun test(a: Int, vararg str: String) // 可以作
+fun test(varage a: Int, vararg str: String) // 编译错误
+```
+
+```kt
+fun test(vararg str: String) {
+    val arr: Array<out String> = str // 可以协变读数据
+}
+```
+
+可以用 `*` 把数组拆成参数：
+
+```kt
+fun main() {
+    val arr = arrayOf(...)
+    test(*array)
+}
+
+fun test(vararg str: String)
+```
+
+## 多维数组
+
+二维数组 (`Array` 套 `IntArray`)：
+
+```kt
+fun main() {
+    val arr: Array<IntArray> = arrayOf(intArrayOf(1, 2), intArrayOf(3, 4), intArrayOf(5, 6))
+
+    // 取 [0][0]：
+    val array: IntArray = arr[0]
+    val item: Int = array[0]
+    // 等价于：
+    println(arr[0][0])
+
+    // 遍历：
+    for (i in arr) {
+        for (j in i) {
+            ...
+        }
+    }
+}
+```
+
+比较：
+
+```kt
+fun main() {
+    val arr1: Array<IntArray> = arrayOf(intArrayOf(1, 2), intArrayOf(3, 4), intArrayOf(5, 6))
+    val arr2: Array<IntArray> = arrayOf(intArrayOf(1, 2), intArrayOf(3, 4), intArrayOf(5, 6))
+
+    println(arr1.contentEquals(arr2)) // 输出 false，只会解一层
+    println(arr1.contentDeepEquals(arr2)) // 输出 true，可以深层比较
+}
+```
+
+前一维数组只是存储了下一维数组的引用，可以非定长数组，甚至可以不同类型 (只要支持协变) 混写。
+
+## 列表
+
+存储有序数据。
+
+`List<>` 只读集合，`MutableList<>` 可变列表。
+
+```kt
+fun main() {
+    val list = mutableListOf(3, 4, 5)
+    println(list[0])
+    list[0] = 10 // 当数组存取，调用 .get() / .set()
+    println(list) // 自带toString()，输出 [3, 4, 5]
+}
+```
+
+末尾插入元素：`.add(xxx)`
+
+中间插入元素：`.add(index, xxx)`
+
+```kt
+fun main() {
+    val list: = mutableListOf(1, 2, 3, 4)
+    list.add(5) // [1, 2, 3, 4, 5]
+    liat.add(1,6) // [1, 6, 2, 3, 4, 5]
+}
+```
+
+删除元素：`.remove(xxx)`、`.removeAt(index)`。
+
+```kt
+fun main() {
+    val list: = mutableListOf("AAA", "BBB", "CCC";
+    list.remove("BBB") // ["AAA", "CCC"]
+    list.removeAt(0) // ["CCC"]
+}
+```
+
+`List`：
+
+生成空列表：`emptyList()`。
+
+过滤 `null`：
+
+```kt
+fun main() {
+    vall arr = arrayOf("AAA", null, "CCC", "DDD")
+    val list = listOfNotNull(*array) ["AAA", "CCC", "DDD"]
+}
+```
+
+构造函数式创建列表：
+
+```kt
+fun main() {
+    val list = List(3){ "AAA" }
+}
+```
+
+`forEach { }`、`withIndex()` 用于遍历：
+
+```kt
+fun main() {
+    val list = listOf(...)
+    for((index, item) in list.withIndex()) {
+        println("元素：$item，下标：$index")
+    }
+    list.forEach(::println)
+}
+```
+
+## 集合
+
+无序，不允许重复数据。
+
+`.add(xxx)` 插入内容，只能尾插。
+
+可以借用迭代器 `elementAt(index)` 获取。
+
+集合操作 (中缀)：
+
+- `union`：并集
+- `intersect`：交集
+- `subtract`：差集 (减)
+
+`hashSet`：散列表，不重复且无序。
+
+`sortedSet`：按照大小排序，插入后自动排序，相当于 C++ 中 `std::set`。
+
+`linkedSet`：按照插入顺序排序。
+
+自定义类型建 `set` 时，需要同时定义 `equals()` 和 `hashCode()`。
+
+PS: `hashCode(): Int` 默认值是对象在内存中存放的地址。
+
+## Map 映射
+
+键值对：`<Key, Value>`
